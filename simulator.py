@@ -1,16 +1,21 @@
-import random;
+########################### IMPORTS #########################
+import random
 import sys
 
-time_elapsed = 0
-cpu_bound = 0
-turnaround_total = 0
-wait_total = 0
-num_bursts = 0
+###################### GLOBAL CONSTANTS #####################
 max_total_wait = 0
 min_total_wait = sys.maxint
 max_turnaround = 0
 min_turnaround = sys.maxint
 
+###################### GLOBAL VARIABLES #####################
+time_elapsed = 0
+cpu_bound = 0
+turnaround_total = 0
+wait_total = 0
+num_bursts = 0
+
+###################### CLASS DECLARATIONS ###################
 class Process:
 	def __init__(self, _id, _type):
 		self.id = _id
@@ -84,6 +89,7 @@ class Process:
 		avg_wait_times = sum(self.all_wait_times) / float(len(self.all_wait_times))
 		print "[time %dms] %s process ID %d terminated (avg turnaround time %dms, avg total wait time %dms)" % (time_elapsed, self.type_string, self.id, avg_turnaround, avg_wait_times)
 
+#################### HELPER FUNCTIONS #########################
 def print_list(list):
 	for l in list:
 		print l
@@ -107,6 +113,7 @@ def analysis(all):
 ##...
 #process ID: ___%
 
+################### SCHEDULING ALGORITHMS ##################
 def fcfs(all):
 	global cpu_bound
 	finished = []
@@ -132,7 +139,16 @@ def fcfs(all):
 			break
 	analysis(finished)
 
-### MAIN ###
+def sjf_nonpreemptive(all):
+	return
+
+def sjf_preemptive(all):
+	return
+
+def roundRobin(all):
+	return
+
+####################### MAIN ################################
 #a = Process(1, 0)
 #b = Process(2, 1)
 processes = []
