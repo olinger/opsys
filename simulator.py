@@ -147,7 +147,6 @@ def reset_conditions():
 	min_total_wait = sys.maxint
 	max_turnaround = 0
 	min_turnaround = sys.maxint
-
 	#processes = copy.deepcopy(initial_processes)
 
 def create_CPUs(m):
@@ -175,14 +174,15 @@ def fcfs(all, all_cpu):
 		p = all[0]
 		p.switch_from(prev)
 		if p.status == "ready":
-			least_busy_cpu = find_least_busy(all_cpu)
-			all_cpu[least_busy_cpu].current_processes.append(p)
-			all_cpu[least_busy_cpu].set_load()
-			p.cpu_index = least_busy_cpu
+			if p.cpu_index == -1: #process is not on any CPU yet
+				p.cpu_index = find_least_busy(all_cpu)
+				all_cpu[p.cpu_index].current_processes.append(p)
+				all_cpu[p.cpu_index].set_load()
 			done = p.burst()
 			if done == True:
-				all_cpu[least_busy_cpu].current_processes.remove(p)
-				all_cpu[least_busy_cpu].set_load()
+				# remove process from CPU
+				all_cpu[p.cpu_index].current_processes.remove(p)
+				all_cpu[p.cpu_index].set_load()
 				p.cpu_index = -1
 				finished.append(p)
 				all.remove(p)
@@ -190,9 +190,6 @@ def fcfs(all, all_cpu):
 			else:
 				tmp = p
 				tmp.burst_start_times.append(time_elapsed)
-				all_cpu[least_busy_cpu].current_processes.remove(p)
-				all_cpu[least_busy_cpu].set_load()
-				p.cpu_index = -1
 				all.remove(p)
 				all.append(tmp)
 			p.status = "blocked"
