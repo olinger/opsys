@@ -38,6 +38,7 @@ class Process:
 		self.all_turnarounds = []
 		self.all_wait_times = []
 		self.cpu_util = []
+		self.cpu_index = -1
 
 	def __str__(self):
 		return self.type_string + " process ID " + str(self.id) 
@@ -73,7 +74,7 @@ class Process:
 		total_wait_time = time_elapsed - self.burst_start_times[-1]
 		turnaround = total_wait_time + self.cpu_time
 		time_elapsed += self.cpu_time
-		print "[time %dms] %s process ID %d CPU burst done (turnaround time %dms, total wait time %dms)" % (time_elapsed, self.type_string, self.id, turnaround, total_wait_time)
+		print "[time %dms] %s process ID %d CPU burst done on CPU %d (turnaround time %dms, total wait time %dms)" % (time_elapsed, self.type_string, self.id, self.cpu_index, turnaround, total_wait_time)
 		self.all_turnarounds.append(turnaround)
 		self.all_wait_times.append(total_wait_time)
 		#increment totals, store max and mins
@@ -106,6 +107,20 @@ class Process:
 		avg_wait_times = sum(self.all_wait_times) / float(len(self.all_wait_times))
 		print "[time %dms] %s process ID %d terminated (avg turnaround time %dms, avg total wait time %dms)" % (time_elapsed, self.type_string, self.id, avg_turnaround, avg_wait_times)
 
+class CPU:
+	def __init__(self, _id):
+		self.id = _id
+		self.current_processes = []
+		self.load = 0
+	def set_load(self):
+		for p in self.current_processes:
+			self.load += p.cpu_time
+	def print_processes(self):
+		print "~~~~~~~~~~~~~ Processes currently in CPU %d ~~~~~~~~~~~~~" % self.id
+		for p in self.current_processes:
+			print "Process %d with cpu time %d" % (p.id, p.cpu_time)
+
+
 #################### HELPER FUNCTIONS #########################
 def print_list(list):
 	for l in list:
@@ -121,7 +136,7 @@ def analysis(all):
 		print "Process ID %d: %d %%" % (p.id, 0)
 
 def reset_conditions():
-	global time_elapsed, cpu_bound, turnaround_total, wait_total, num_bursts, max_total_wait, min_total_wait, max_turnaround, min_turnaround, processes
+	global time_elapsed, cpu_bound, turnaround_total, wait_total, num_bursts, max_total_wait, min_total_wait, max_turnaround, min_turnaround
 	time_elapsed = 0
 	cpu_bound = 0
 	turnaround_total = 0
@@ -133,20 +148,25 @@ def reset_conditions():
 	max_turnaround = 0
 	min_turnaround = sys.maxint
 
-	processes = copy.deepcopy(initial_processes)
+	#processes = copy.deepcopy(initial_processes)
 
-#Turnaround time: min ___ ms; avg ___ ms; max ___ ms
-#Total wait time: min ___ ms; avg ___ ms; max ___ ms
-#Average CPU utilization: ___%
+def create_CPUs(m):
+	all_cpu = []
+	for i in range(0, m):
+		c = CPU(i)
+		all_cpu.append(c)
+	return all_cpu
 
-#Average CPU utilization per process:
-#process ID: ___%
-#process ID: ___%
-##...
-#process ID: ___%
+
+def find_least_busy(cpus):
+	least_busy = cpus[0]
+	for c in cpus:
+		if c.load < least_busy.load:
+			least_busy = c
+	return least_busy.id
 
 ################### SCHEDULING ALGORITHMS ##################
-def fcfs(all):
+def fcfs(all, all_cpu):
 	global cpu_bound
 	finished = []
 
@@ -155,17 +175,26 @@ def fcfs(all):
 		p = all[0]
 		p.switch_from(prev)
 		if p.status == "ready":
+			least_busy_cpu = find_least_busy(all_cpu)
+			all_cpu[least_busy_cpu].current_processes.append(p)
+			all_cpu[least_busy_cpu].set_load()
+			p.cpu_index = least_busy_cpu
 			done = p.burst()
 			if done == True:
+				all_cpu[least_busy_cpu].current_processes.remove(p)
+				all_cpu[least_busy_cpu].set_load()
+				p.cpu_index = -1
 				finished.append(p)
 				all.remove(p)
 				cpu_bound -= 1
 			else:
 				tmp = p
 				tmp.burst_start_times.append(time_elapsed)
+				all_cpu[least_busy_cpu].current_processes.remove(p)
+				all_cpu[least_busy_cpu].set_load()
+				p.cpu_index = -1
 				all.remove(p)
 				all.append(tmp)
-
 			p.status = "blocked"
 			p.wait()
 			prev = p
@@ -195,8 +224,12 @@ for i in range(1, num_processes+1):
 		x = Process(i, 1)
 	initial_processes.append(x)
 
+#create m CPUs
+m = 4
+all_cpu = create_CPUs(m)
+
 # working list of processes is a deep copy of the initial conditions
-reset_conditions()
-fcfs(processes)
+processes = copy.deepcopy(initial_processes)
+fcfs(processes, all_cpu)
 
 reset_conditions()
