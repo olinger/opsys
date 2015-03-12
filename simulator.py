@@ -196,7 +196,7 @@ for i in range(1, num_processes+1):
 	initial_processes.append(x)
 
 # working list of processes is a deep copy of the initial conditions
-reset_conditions()
+processes = copy.deepcopy(initial_processes)
 fcfs(processes)
 
 reset_conditions()
