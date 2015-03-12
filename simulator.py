@@ -8,6 +8,7 @@ import sys
 num_processes = 12     # total number of processes per
 num_max_bursts = 6     # total number of bursts for CPU bound processes
 cs_time = 4            # time needed for context switch (in ms)
+num_cpus = 4
 initial_processes = []
 
 ###################### GLOBAL VARIABLES #####################
@@ -222,8 +223,7 @@ for i in range(1, num_processes+1):
 	initial_processes.append(x)
 
 #create m CPUs
-m = 4
-all_cpu = create_CPUs(m)
+all_cpu = create_CPUs(num_cpus)
 
 # working list of processes is a deep copy of the initial conditions
 processes = copy.deepcopy(initial_processes)
