@@ -1,19 +1,29 @@
 ########################### IMPORTS #########################
+import copy
 import random
 import sys
 
 ###################### GLOBAL CONSTANTS #####################
+
+num_processes = 12     # total number of processes per
+num_max_bursts = 6     # total number of bursts for CPU bound processes
+cs_time = 4            # time needed for context switch (in ms)
+initial_processes = []
+
+###################### GLOBAL VARIABLES #####################
+
+time_elapsed = 0      # total time elapsed since the start of the current algorithm
+cpu_bound = 0         # number of CPU bound processes left
+turnaround_total = 0
+wait_total = 0
+num_bursts = 0
+
 max_total_wait = 0
 min_total_wait = sys.maxint
 max_turnaround = 0
 min_turnaround = sys.maxint
 
-###################### GLOBAL VARIABLES #####################
-time_elapsed = 0
-cpu_bound = 0
-turnaround_total = 0
-wait_total = 0
-num_bursts = 0
+processes = []
 
 ###################### CLASS DECLARATIONS ###################
 class Process:
@@ -79,10 +89,17 @@ class Process:
 		if total_wait_time < min_total_wait:
 			min_total_wait = total_wait_time
 		#check if last burst for CPU-bound process
-		if self.type == 1 and len(self.burst_start_times) >= 6:
+		if self.type == 1 and len(self.burst_start_times) >= num_max_bursts:
 			return True
 		else:
 			return False
+
+	# handles context switching
+	def switch_from(self, other):
+		global time_elapsed, cs_time
+		if other != None and self != other:	
+			print "[time %dms] Context switch (swapping out process ID %d for process ID %d)" %(time_elapsed, other.id, self.id)
+			time_elapsed += cs_time
 
 	def done(self):
 		avg_turnaround = sum(self.all_turnarounds) / float(len(self.all_turnarounds))
@@ -103,6 +120,21 @@ def analysis(all):
 	for p in all:
 		print "Process ID %d: %d %%" % (p.id, 0)
 
+def reset_conditions():
+	global time_elapsed, cpu_bound, turnaround_total, wait_total, num_bursts, max_total_wait, min_total_wait, max_turnaround, min_turnaround, processes
+	time_elapsed = 0
+	cpu_bound = 0
+	turnaround_total = 0
+	wait_total = 0
+	num_bursts = 0
+
+	max_total_wait = 0
+	min_total_wait = sys.maxint
+	max_turnaround = 0
+	min_turnaround = sys.maxint
+
+	processes = copy.deepcopy(initial_processes)
+
 #Turnaround time: min ___ ms; avg ___ ms; max ___ ms
 #Total wait time: min ___ ms; avg ___ ms; max ___ ms
 #Average CPU utilization: ___%
@@ -117,8 +149,11 @@ def analysis(all):
 def fcfs(all):
 	global cpu_bound
 	finished = []
+
+	prev = None
 	while(True):
 		p = all[0]
+		p.switch_from(prev)
 		if p.status == "ready":
 			done = p.burst()
 			if done == True:
@@ -133,6 +168,8 @@ def fcfs(all):
 
 			p.status = "blocked"
 			p.wait()
+			prev = p
+
 		if cpu_bound == 0:
 			finished.extend(all)
 			p.done()
@@ -149,13 +186,17 @@ def roundRobin(all):
 	return
 
 ####################### MAIN ################################
-#a = Process(1, 0)
-#b = Process(2, 1)
-processes = []
-for i in range(1,13):
-	if i <= 10:
+
+# set up initial processes and save them
+for i in range(1, num_processes+1):
+	if i <= 0.8*num_processes:
 		x = Process(i, 0)
 	else:
 		x = Process(i, 1)
-	processes.append(x)
+	initial_processes.append(x)
+
+# working list of processes is a deep copy of the initial conditions
+reset_conditions()
 fcfs(processes)
+
+reset_conditions()
