@@ -6,10 +6,10 @@ import sys
 
 ###################### GLOBAL CONSTANTS #####################
 
-num_processes = 12     # total number of processes per
-num_max_bursts = 6     # total number of bursts for CPU bound processes
+num_processes = 4     # total number of processes per
+num_max_bursts = 1     # total number of bursts for CPU bound processes
 cs_time = 4            # time needed for context switch (in ms)
-num_cpus = 4
+num_cpus = 2
 initial_processes = []
 total_cpu_bound = 0
 
@@ -28,6 +28,7 @@ min_turnaround = sys.maxint
 
 processes = []
 all_cpu = []
+all_printout = []
 
 ###################### CLASS DECLARATIONS ###################
 class Process:
@@ -69,16 +70,25 @@ class Process:
 	def wait(self):
 		global time_elapsed
 		wait_time = random.randint(1000, 4500)
-		time_elapsed += wait_time
+		all_cpu[self.cpu_index].time_elapsed += wait_time
 		self.status = "ready"
+
+	def add_printout(self, time, out):
+		global all_printout
+		p = printout(time, out)
+		all_printout.append(p)
 
 	def burst(self):
 		global time_elapsed, num_bursts, turnaround_total, wait_total, max_turnaround, min_turnaround, max_total_wait, min_total_wait
 		self.status = "active"
-		total_wait_time = time_elapsed - self.burst_start_times[-1]
+		total_wait_time = all_cpu[self.cpu_index].time_elapsed - self.burst_start_times[-1]
 		turnaround = total_wait_time + self.cpu_time
-		time_elapsed += self.cpu_time
-		print "[time %dms] %s process ID %d CPU burst done on CPU %d (turnaround time %dms, total wait time %dms)" % (time_elapsed, self.type_string, self.id, self.cpu_index, turnaround, total_wait_time)
+		#increment time elapsed on CPU
+		all_cpu[self.cpu_index].time_elapsed += self.cpu_time
+		#output
+		out = "[time " + str(all_cpu[self.cpu_index].time_elapsed) + "ms] " + self.type_string + " process ID " + str(self.id) + " CPU burst done on CPU " + str(self.cpu_index) + " (turnaround time " + str(turnaround) + "ms, total wait time " + str(total_wait_time) + "ms)" 
+		self.add_printout(all_cpu[self.cpu_index].time_elapsed, out)
+	#	print "[time %dms] %s process ID %d CPU burst done on CPU %d (turnaround time %dms, total wait time %dms)" % (time_elapsed, self.type_string, self.id, self.cpu_index, turnaround, total_wait_time)
 		self.all_turnarounds.append(turnaround)
 		self.all_wait_times.append(total_wait_time)
 		#increment totals, store max and mins
@@ -103,27 +113,40 @@ class Process:
 	def switch_from(self, other):
 		global time_elapsed, cs_time
 		if other != None and self != other:	
-			print "[time %dms] Context switch (swapping out process ID %d for process ID %d)" %(time_elapsed, other.id, self.id)
-			time_elapsed += cs_time
+			out = "[time " + str(all_cpu[self.cpu_index].time_elapsed) + "ms] Context switch (swapping out process ID " + str(other.id) + " for process ID " + str(self.id) +")"
+			all_cpu[self.cpu_index].time_elapsed += cs_time
+			self.add_printout(all_cpu[self.cpu_index].time_elapsed, out)
 
 	def done(self):
 		avg_turnaround = sum(self.all_turnarounds) / float(len(self.all_turnarounds))
 		avg_wait_times = sum(self.all_wait_times) / float(len(self.all_wait_times))
-		print "[time %dms] %s process ID %d terminated (avg turnaround time %dms, avg total wait time %dms)" % (time_elapsed, self.type_string, self.id, avg_turnaround, avg_wait_times)
-
+		
+		#print "[time %dms] %s process ID %d terminated (avg turnaround time %dms, avg total wait time %dms)" % (time_elapsed, self.type_string, self.id, avg_turnaround, avg_wait_times)
+		out = "[time " + str(all_cpu[self.cpu_index].time_elapsed) + "ms] " + self.type_string + " process ID " + str(self.id) + " terminated (avg turnaround time " + str(avg_turnaround) + "ms, avg total wait time " + str(avg_wait_times) + "ms)"
+		self.add_printout(all_cpu[self.cpu_index].time_elapsed, out)
 class CPU:
 	def __init__(self, _id):
 		self.id = _id
 		self.current_processes = []
 		self.load = 0
+		self.time_elapsed = 0
 	def set_load(self):
 		for p in self.current_processes:
 			self.load += p.cpu_time
+
 	def print_processes(self):
 		print "~~~~~~~~~~~~~ Processes currently in CPU %d ~~~~~~~~~~~~~" % self.id
 		for p in self.current_processes:
 			print "Process %d with cpu time %d" % (p.id, p.cpu_time)
 
+class printout:
+	def __init__(self, _time, _output):
+		self.time = _time
+		self.output = _output
+	def __str__(self):
+		return self.output
+	def __lt__(self, other):
+		return self.time < other.time
 
 #################### HELPER FUNCTIONS #########################
 def print_list(list):
@@ -188,10 +211,15 @@ def finish_process(p, finished):
 	cpu_bound -= 1
 
 def swap_process(p, location):
-	p.burst_start_times.append(time_elapsed)
+	p.burst_start_times.append(all_cpu[p.cpu_index].time_elapsed)
 	tmp = p
 	processes.remove(p)
 	processes.insert(location, tmp)
+
+def print_all():
+	all_printout.sort()
+	for s in all_printout:
+		print s
 
 ################### SCHEDULING ALGORITHMS ##################
 def fcfs():
@@ -215,6 +243,8 @@ def fcfs():
 			finished.extend(processes)
 			p.done()
 			break
+
+	print_all()
 	analysis(finished)
 
 def sjf_nonpreemptive(all, all_cpu):
@@ -254,6 +284,8 @@ def sjf_nonpreemptive(all, all_cpu):
 			finished.extend(all)
 			p.done()
 			break
+
+	print_all()
 	analysis(finished)
 
 def sjf_preemptive(all):
@@ -279,7 +311,6 @@ all_cpu = create_CPUs(num_cpus)
 # working list of processes is a deep copy of the initial conditions
 processes = copy.deepcopy(initial_processes)
 fcfs()
-
 processes = copy.deepcopy(initial_processes)
-sjf_nonpreemptive(processes, all_cpu)
+#sjf_nonpreemptive(processes, all_cpu)
 reset_conditions()
