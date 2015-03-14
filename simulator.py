@@ -27,6 +27,7 @@ max_turnaround = 0
 min_turnaround = sys.maxint
 
 processes = []
+all_cpu = []
 
 ###################### CLASS DECLARATIONS ###################
 class Process:
@@ -169,40 +170,49 @@ def find_least_busy(cpus):
 def burst_time_lt(self, other):
 	return self.cpu_time < other.cpu_time
 
+def start_process(p):
+	if p.cpu_index == -1: #process is not on any CPU yet
+		p.cpu_index = find_least_busy(all_cpu)
+		all_cpu[p.cpu_index].current_processes.append(p)
+		all_cpu[p.cpu_index].set_load()
+	return p.burst()
+
+def finish_process(p, finished):
+	global cpu_bound
+	# remove process from CPU
+	all_cpu[p.cpu_index].current_processes.remove(p)
+	all_cpu[p.cpu_index].set_load()
+	p.cpu_index = -1
+	finished.append(p)
+	processes.remove(p)
+	cpu_bound -= 1
+
+def swap_process(p, location):
+	p.burst_start_times.append(time_elapsed)
+	tmp = p
+	processes.remove(p)
+	processes.insert(location, tmp)
+
 ################### SCHEDULING ALGORITHMS ##################
-def fcfs(all, all_cpu):
+def fcfs():
 	global cpu_bound
 	finished = []
-
 	prev = None
 	while(True):
-		p = all[0]
+		p = processes[0]
 		p.switch_from(prev)
 		if p.status == "ready":
-			if p.cpu_index == -1: #process is not on any CPU yet
-				p.cpu_index = find_least_busy(all_cpu)
-				all_cpu[p.cpu_index].current_processes.append(p)
-				all_cpu[p.cpu_index].set_load()
-			done = p.burst()
-			if done == True:
+			done = start_process(p)
+			if done == True: #CPU Bound Process has finished it's last burst
 				# remove process from CPU
-				all_cpu[p.cpu_index].current_processes.remove(p)
-				all_cpu[p.cpu_index].set_load()
-				p.cpu_index = -1
-				finished.append(p)
-				all.remove(p)
-				cpu_bound -= 1
+				finish_process(p, finished)
 			else:
-				tmp = p
-				tmp.burst_start_times.append(time_elapsed)
-				all.remove(p)
-				all.append(tmp)
+				swap_process(p, len(processes)) #reinsert process at end of queue
 			p.status = "blocked"
 			p.wait()
 			prev = p
-
 		if cpu_bound == 0:
-			finished.extend(all)
+			finished.extend(processes)
 			p.done()
 			break
 	analysis(finished)
@@ -268,8 +278,7 @@ all_cpu = create_CPUs(num_cpus)
 
 # working list of processes is a deep copy of the initial conditions
 processes = copy.deepcopy(initial_processes)
-fcfs(processes, all_cpu)
-reset_conditions()
+fcfs()
 
 processes = copy.deepcopy(initial_processes)
 sjf_nonpreemptive(processes, all_cpu)
