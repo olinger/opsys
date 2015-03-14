@@ -1,5 +1,6 @@
 ########################### IMPORTS #########################
 import copy
+import operator
 import random
 import sys
 
@@ -10,6 +11,7 @@ num_max_bursts = 6     # total number of bursts for CPU bound processes
 cs_time = 4            # time needed for context switch (in ms)
 num_cpus = 4
 initial_processes = []
+total_cpu_bound = 0
 
 ###################### GLOBAL VARIABLES #####################
 
@@ -137,9 +139,9 @@ def analysis(all):
 		print "Process ID %d: %d %%" % (p.id, 0)
 
 def reset_conditions():
-	global time_elapsed, cpu_bound, turnaround_total, wait_total, num_bursts, max_total_wait, min_total_wait, max_turnaround, min_turnaround
+	global time_elapsed, cpu_bound, total_cpu_bound, turnaround_total, wait_total, num_bursts, max_total_wait, min_total_wait, max_turnaround, min_turnaround
 	time_elapsed = 0
-	cpu_bound = 0
+	cpu_bound = total_cpu_bound
 	turnaround_total = 0
 	wait_total = 0
 	num_bursts = 0
@@ -148,7 +150,6 @@ def reset_conditions():
 	min_total_wait = sys.maxint
 	max_turnaround = 0
 	min_turnaround = sys.maxint
-	#processes = copy.deepcopy(initial_processes)
 
 def create_CPUs(m):
 	all_cpu = []
@@ -164,6 +165,9 @@ def find_least_busy(cpus):
 		if c.load < least_busy.load:
 			least_busy = c
 	return least_busy.id
+
+def burst_time_lt(self, other):
+	return self.cpu_time < other.cpu_time
 
 ################### SCHEDULING ALGORITHMS ##################
 def fcfs(all, all_cpu):
@@ -203,8 +207,44 @@ def fcfs(all, all_cpu):
 			break
 	analysis(finished)
 
-def sjf_nonpreemptive(all):
-	return
+def sjf_nonpreemptive(all, all_cpu):
+	global cpu_bound
+
+	all.sort(key = operator.attrgetter('cpu_time'))
+	finished = []
+
+	prev = None
+	while(True):
+		p = all[0]
+		p.switch_from(prev)
+		if p.status == "ready":
+			if p.cpu_index == -1: #process is not on any CPU yet
+				p.cpu_index = find_least_busy(all_cpu)
+				all_cpu[p.cpu_index].current_processes.append(p)
+				all_cpu[p.cpu_index].set_load()
+			done = p.burst()
+			if done == True:
+				# remove process from CPU
+				all_cpu[p.cpu_index].current_processes.remove(p)
+				all_cpu[p.cpu_index].set_load()
+				p.cpu_index = -1
+				finished.append(p)
+				all.remove(p)
+				cpu_bound -= 1
+			else:
+				tmp = p
+				tmp.burst_start_times.append(time_elapsed)
+				all.remove(p)
+				all.append(tmp)
+			p.status = "blocked"
+			p.wait()
+			prev = p
+
+		if cpu_bound == 0:
+			finished.extend(all)
+			p.done()
+			break
+	analysis(finished)
 
 def sjf_preemptive(all):
 	return
@@ -221,6 +261,7 @@ for i in range(1, num_processes+1):
 	else:
 		x = Process(i, 1)
 	initial_processes.append(x)
+total_cpu_bound = cpu_bound
 
 #create m CPUs
 all_cpu = create_CPUs(num_cpus)
@@ -228,5 +269,8 @@ all_cpu = create_CPUs(num_cpus)
 # working list of processes is a deep copy of the initial conditions
 processes = copy.deepcopy(initial_processes)
 fcfs(processes, all_cpu)
+reset_conditions()
 
+processes = copy.deepcopy(initial_processes)
+sjf_nonpreemptive(processes, all_cpu)
 reset_conditions()
