@@ -124,12 +124,15 @@ class Process:
 		#print "[time %dms] %s process ID %d terminated (avg turnaround time %dms, avg total wait time %dms)" % (time_elapsed, self.type_string, self.id, avg_turnaround, avg_wait_times)
 		out = "[time " + str(all_cpu[self.cpu_index].time_elapsed) + "ms] " + self.type_string + " process ID " + str(self.id) + " terminated (avg turnaround time " + str(avg_turnaround) + "ms, avg total wait time " + str(avg_wait_times) + "ms)"
 		self.add_printout(all_cpu[self.cpu_index].time_elapsed, out)
+
 class CPU:
 	def __init__(self, _id):
 		self.id = _id
 		self.current_processes = []
 		self.load = 0
 		self.time_elapsed = 0
+		self.prev_process = None # most recent process run by this CPU (used for context switching)
+
 	def set_load(self):
 		for p in self.current_processes:
 			self.load += p.cpu_time
@@ -182,7 +185,6 @@ def create_CPUs(m):
 		all_cpu.append(c)
 	return all_cpu
 
-
 def find_least_busy(cpus):
 	least_busy = cpus[0]
 	for c in cpus:
@@ -198,10 +200,12 @@ def start_process(p):
 		p.cpu_index = find_least_busy(all_cpu)
 		all_cpu[p.cpu_index].current_processes.append(p)
 		all_cpu[p.cpu_index].set_load()
+	p.switch_from(all_cpu[p.cpu_index].prev_process)
 	return p.burst()
 
 def finish_process(p, finished):
 	global cpu_bound
+	all_cpu[p.cpu_index].prev_process = p
 	# remove process from CPU
 	all_cpu[p.cpu_index].current_processes.remove(p)
 	all_cpu[p.cpu_index].set_load()
@@ -212,6 +216,7 @@ def finish_process(p, finished):
 
 def swap_process(p, location):
 	p.burst_start_times.append(all_cpu[p.cpu_index].time_elapsed)
+	all_cpu[p.cpu_index].prev_process = p
 	tmp = p
 	processes.remove(p)
 	processes.insert(location, tmp)
@@ -225,10 +230,8 @@ def print_all():
 def fcfs():
 	global cpu_bound
 	finished = []
-	prev = None
 	while(True):
 		p = processes[0]
-		p.switch_from(prev)
 		if p.status == "ready":
 			done = start_process(p)
 			if done == True: #CPU Bound Process has finished it's last burst
@@ -238,7 +241,6 @@ def fcfs():
 				swap_process(p, len(processes)) #reinsert process at end of queue
 			p.status = "blocked"
 			p.wait()
-			prev = p
 		if cpu_bound == 0:
 			finished.extend(processes)
 			p.done()
@@ -248,45 +250,7 @@ def fcfs():
 	analysis(finished)
 
 def sjf_nonpreemptive(all, all_cpu):
-	global cpu_bound
-
-	all.sort(key = operator.attrgetter('cpu_time'))
-	finished = []
-
-	prev = None
-	while(True):
-		p = all[0]
-		p.switch_from(prev)
-		if p.status == "ready":
-			if p.cpu_index == -1: #process is not on any CPU yet
-				p.cpu_index = find_least_busy(all_cpu)
-				all_cpu[p.cpu_index].current_processes.append(p)
-				all_cpu[p.cpu_index].set_load()
-			done = p.burst()
-			if done == True:
-				# remove process from CPU
-				all_cpu[p.cpu_index].current_processes.remove(p)
-				all_cpu[p.cpu_index].set_load()
-				p.cpu_index = -1
-				finished.append(p)
-				all.remove(p)
-				cpu_bound -= 1
-			else:
-				tmp = p
-				tmp.burst_start_times.append(time_elapsed)
-				all.remove(p)
-				all.append(tmp)
-			p.status = "blocked"
-			p.wait()
-			prev = p
-
-		if cpu_bound == 0:
-			finished.extend(all)
-			p.done()
-			break
-
-	print_all()
-	analysis(finished)
+	return
 
 def sjf_preemptive(all):
 	return
