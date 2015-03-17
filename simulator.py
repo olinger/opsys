@@ -241,13 +241,10 @@ def print_all():
 		print s
 
 def all_blocked(): #returns true if ALL processes are blocked on IO
-	num_blocked = 0
 	for p in processes:
-		if p.status == "blocked":
-			num_blocked+=1
-	if num_blocked == num_processes:
-		return True
-	return False
+		if p.status != "blocked":
+			return False
+	return True
 
 def handle_IO(p):
 	while(p.status == "blocked"):
@@ -301,7 +298,7 @@ def sjf_nonpreemptive():
 
 	for i in range(0, len(processes)):
 		processes[i].ready_output()
-		
+
 	processes.sort(key = operator.attrgetter('cpu_time'))
 
 	finished = []
@@ -318,7 +315,7 @@ def sjf_nonpreemptive():
 				for i in range(0, len(processes)):
 					if p.cpu_time < processes[i].cpu_time:
 						location = i
-				swap_process(p, location) #reinsert process at end of queue
+				swap_process(p, location) #reinsert process so that list is still sorted by ascending cpu burst time
 
 		if cpu_bound == 0:
 			finished.extend(processes)
