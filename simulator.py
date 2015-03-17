@@ -295,18 +295,23 @@ def fcfs():
 
 def sjf_nonpreemptive():
 	global cpu_bound
+	processes.sort(key = operator.attrgetter('cpu_time'))
 	finished = []
+	p = processes[0]
 	while(True):
-		p = processes[0]
+		p = handle_IO(p) #pass start of queue here, will move things around in queue based on IO wait time if necessary
 		if p.status == "ready":
 			done = start_process(p)
 			if done == True: #CPU Bound Process has finished it's last burst
 				# remove process from CPU
 				finish_process(p, finished)
 			else:
-				swap_process(p, len(processes)) #reinsert process at end of queue
-			p.status = "blocked"
-			p.wait()
+				location = len(processes)
+				for i in range(0, len(processes)):
+					if p.cpu_time < processes[i].cpu_time:
+						location = i
+				swap_process(p, location) #reinsert process at end of queue
+
 		if cpu_bound == 0:
 			finished.extend(processes)
 			p.done()
@@ -334,7 +339,6 @@ total_cpu_bound = cpu_bound
 
 #create m CPUs
 all_cpu = create_CPUs(num_cpus)
-
 
 # working list of processes is a deep copy of the initial conditions
 processes = copy.deepcopy(initial_processes)
