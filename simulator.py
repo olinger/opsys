@@ -8,8 +8,8 @@ import time
 ###################### GLOBAL CONSTANTS #####################
 
 
-num_processes = 12     # total number of processes per
-num_max_bursts = 2   # total number of bursts for CPU bound processes
+num_processes = 10    # total number of processes per
+num_max_bursts = 2    # total number of bursts for CPU bound processes
 cs_time = 4            # time needed for context switch (in ms)
 num_cpus = 1
 initial_processes = []
@@ -265,7 +265,7 @@ def handle_IO(p):
 				p.status = "ready"
 				break
 			else:
-				print "[time %dms] Process %d is blocked on IO" % (all_cpu[p.cpu_index].time_elapsed, p.id)
+				#print "[time %dms] Process %d is blocked on IO" % (all_cpu[p.cpu_index].time_elapsed, p.id)
 				swap_process(p, 1) #move process down 
 	return p
 
@@ -315,11 +315,12 @@ def sjf_nonpreemptive():
 				# remove process from CPU
 				finish_process(p, finished)
 			else:
+				#reinsert process so that list is still sorted by ascending cpu burst time
 				location = len(processes)
 				for i in range(0, len(processes)):
 					if p.cpu_time < processes[i].cpu_time:
 						location = i
-				swap_process(p, location) #reinsert process at end of queue
+				swap_process(p, location) 
 
 		if cpu_bound == 0:
 			finished.extend(processes)
