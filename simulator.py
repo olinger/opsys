@@ -311,11 +311,12 @@ def sjf_nonpreemptive():
 				# remove process from CPU
 				finish_process(p, finished)
 			else:
+				#reinsert process so that list is still sorted by ascending cpu burst time
 				location = len(processes)
 				for i in range(0, len(processes)):
 					if p.cpu_time < processes[i].cpu_time:
 						location = i
-				swap_process(p, location) #reinsert process so that list is still sorted by ascending cpu burst time
+				swap_process(p, location) 
 
 		if cpu_bound == 0:
 			finished.extend(processes)
