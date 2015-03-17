@@ -3,13 +3,14 @@ import copy
 import operator
 import random
 import sys
+import time
 
 ###################### GLOBAL CONSTANTS #####################
 
-num_processes = 4     # total number of processes per
-num_max_bursts = 1     # total number of bursts for CPU bound processes
+num_processes = 5     # total number of processes per
+num_max_bursts = 6   # total number of bursts for CPU bound processes
 cs_time = 4            # time needed for context switch (in ms)
-num_cpus = 2
+num_cpus = 1
 initial_processes = []
 total_cpu_bound = 0
 
@@ -37,6 +38,7 @@ class Process:
 		self.type = _type
 		self.cpu_time = self.generate_burst(_type)
 		self.status = "ready"
+		self.time_entered_queue = 0
 		self.type_string = self.get_type()
 		self.creation_output()
 		self.burst_start_times = [time_elapsed]
@@ -44,6 +46,7 @@ class Process:
 		self.all_wait_times = []
 		self.cpu_util = []
 		self.cpu_index = -1
+		self.IO_block = 0
 
 	def __str__(self):
 		return self.type_string + " process ID " + str(self.id) 
@@ -68,10 +71,13 @@ class Process:
 		return burst_time
 
 	def wait(self):
-		global time_elapsed
 		wait_time = random.randint(1000, 4500)
-		all_cpu[self.cpu_index].time_elapsed += wait_time
-		self.status = "ready"
+		self.IO_block = wait_time
+	#	if self.cpu_index < 0:
+	#		return wait_time
+		self.time_entered_queue = wait_time + all_cpu[self.cpu_index].time_elapsed
+		self.status = "blocked"
+		return wait_time
 
 	def add_printout(self, time, out):
 		global all_printout
@@ -79,16 +85,17 @@ class Process:
 		all_printout.append(p)
 
 	def burst(self):
-		global time_elapsed, num_bursts, turnaround_total, wait_total, max_turnaround, min_turnaround, max_total_wait, min_total_wait
-		self.status = "active"
-		total_wait_time = all_cpu[self.cpu_index].time_elapsed - self.burst_start_times[-1]
-		turnaround = total_wait_time + self.cpu_time
-		#increment time elapsed on CPU
-		all_cpu[self.cpu_index].time_elapsed += self.cpu_time
-		#output
+		global num_bursts, turnaround_total, wait_total, max_turnaround, min_turnaround, max_total_wait, min_total_wait
+		
+		total_wait_time = all_cpu[self.cpu_index].time_elapsed - self.time_entered_queue
+		turnaround = self.cpu_time + total_wait_time
+
 		out = "[time " + str(all_cpu[self.cpu_index].time_elapsed) + "ms] " + self.type_string + " process ID " + str(self.id) + " CPU burst done on CPU " + str(self.cpu_index) + " (turnaround time " + str(turnaround) + "ms, total wait time " + str(total_wait_time) + "ms)" 
 		self.add_printout(all_cpu[self.cpu_index].time_elapsed, out)
-	#	print "[time %dms] %s process ID %d CPU burst done on CPU %d (turnaround time %dms, total wait time %dms)" % (time_elapsed, self.type_string, self.id, self.cpu_index, turnaround, total_wait_time)
+
+		all_cpu[self.cpu_index].time_elapsed += turnaround
+		self.wait()
+
 		self.all_turnarounds.append(turnaround)
 		self.all_wait_times.append(total_wait_time)
 		#increment totals, store max and mins
@@ -103,6 +110,7 @@ class Process:
 			max_total_wait = total_wait_time
 		if total_wait_time < min_total_wait:
 			min_total_wait = total_wait_time
+
 		#check if last burst for CPU-bound process
 		if self.type == 1 and len(self.burst_start_times) >= num_max_bursts:
 			return True
@@ -111,7 +119,7 @@ class Process:
 
 	# handles context switching
 	def switch_from(self, other):
-		global time_elapsed, cs_time
+		global cs_time
 		if other != None and self != other:	
 			out = "[time " + str(all_cpu[self.cpu_index].time_elapsed) + "ms] Context switch (swapping out process ID " + str(other.id) + " for process ID " + str(self.id) +")"
 			all_cpu[self.cpu_index].time_elapsed += cs_time
@@ -226,12 +234,42 @@ def print_all():
 	for s in all_printout:
 		print s
 
+def all_blocked(): #returns true if ALL processes are blocked on IO
+	num_blocked = 0
+	for p in processes:
+		if p.status == "blocked":
+			num_blocked+=1
+	if num_blocked == num_processes:
+		return True
+	return False
+
+def handle_IO(p):
+	while(p.status == "blocked"):
+		p = processes[0]
+		if all_blocked(): #all processes are blocked on IO, wait for first process to finish
+			time_left = p.time_entered_queue - all_cpu[p.cpu_index].time_elapsed
+			all_cpu[p.cpu_index].time_elapsed += time_left
+			p.time_entered_queue = all_cpu[p.cpu_index].time_elapsed
+			p.status = "ready"
+			break
+		else: 
+			time_offset = all_cpu[p.cpu_index].time_elapsed - p.time_entered_queue
+			if p.time_entered_queue <= all_cpu[p.cpu_index].time_elapsed:
+				p.status = "ready"
+				break
+			else:
+				#print "[time %dms] Process %d is blocked on IO" % (all_cpu[p.cpu_index].time_elapsed, p.id)
+				swap_process(p, 1) #move process down 
+	return p
+
+
 ################### SCHEDULING ALGORITHMS ##################
 def fcfs():
 	global cpu_bound
 	finished = []
+	p = processes[0]
 	while(True):
-		p = processes[0]
+		p = handle_IO(p) #pass start of queue here, will move things around in queue based on IO wait time if necessary
 		if p.status == "ready":
 			done = start_process(p)
 			if done == True: #CPU Bound Process has finished it's last burst
@@ -239,8 +277,8 @@ def fcfs():
 				finish_process(p, finished)
 			else:
 				swap_process(p, len(processes)) #reinsert process at end of queue
-			p.status = "blocked"
-			p.wait()
+		#	p.status = "blocked"
+		#	p.wait()
 		if cpu_bound == 0:
 			finished.extend(processes)
 			p.done()
@@ -271,6 +309,7 @@ total_cpu_bound = cpu_bound
 
 #create m CPUs
 all_cpu = create_CPUs(num_cpus)
+
 
 # working list of processes is a deep copy of the initial conditions
 processes = copy.deepcopy(initial_processes)
