@@ -8,8 +8,8 @@ import time
 ###################### GLOBAL CONSTANTS #####################
 
 
-num_processes = 5     # total number of processes per
-num_max_bursts = 6   # total number of bursts for CPU bound processes
+num_processes = 4     # total number of processes per
+num_max_bursts = 1   # total number of bursts for CPU bound processes
 cs_time = 4            # time needed for context switch (in ms)
 num_cpus = 1
 initial_processes = []
@@ -214,7 +214,6 @@ def start_process(p):
 		p.cpu_index = find_least_busy(all_cpu)
 		all_cpu[p.cpu_index].current_processes.append(p)
 		all_cpu[p.cpu_index].set_load()
-	p.switch_from(all_cpu[p.cpu_index].prev_process)
 	return p.burst()
 
 def finish_process(p, finished):
@@ -296,6 +295,10 @@ def fcfs():
 def sjf_nonpreemptive():
 	global cpu_bound
 	processes.sort(key = operator.attrgetter('cpu_time'))
+
+	for i in range(0, len(processes)):
+		processes[i].creation_output()
+
 	finished = []
 	p = processes[0]
 	while(True):
