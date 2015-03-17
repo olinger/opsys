@@ -59,9 +59,9 @@ class Process:
 			cpu_bound += 1
 			return "CPU-bound"
 
-	def ready_output(self):
-		out = "[time " + str(all_cpu[self.cpu_index].time_elapsed) + "ms] " + self.type_string + " process ID " + str(self.id) + " entered ready queue (requires " + str(self.cpu_time) + "ms CPU time)"
-		self.add_printout(all_cpu[self.cpu_index].time_elapsed, out)
+	def ready_output(self, t):
+		out = "[time " + str(t) + "ms] " + self.type_string + " process ID " + str(self.id) + " entered ready queue (requires " + str(self.cpu_time) + "ms CPU time)"
+		self.add_printout(t, out)
 		#print "[time %dms] %s process ID %d entered ready queue (requires %dms CPU time)" % (time_elapsed, self.type_string, self.id, self.cpu_time)
 
 	def generate_burst(self, type):
@@ -78,9 +78,7 @@ class Process:
 	#		return wait_time
 		self.time_entered_queue = wait_time + all_cpu[self.cpu_index].time_elapsed
 		self.status = "blocked"
-		out = "[time " + str(self.time_entered_queue) + "ms] " + self.type_string + " process ID " + str(self.id) + " entered ready queue (requires " + str(self.cpu_time) + "ms CPU time)"
-		self.add_printout(all_cpu[self.cpu_index].time_elapsed, out)
-
+		self.ready_output(self.time_entered_queue);
 		return wait_time
 
 	def add_printout(self, time, out):
@@ -276,7 +274,7 @@ def handle_IO(p):
 def fcfs():
 	global cpu_bound
 	for i in range(0, len(processes)):
-		processes[i].ready_output()
+		processes[i].ready_output(0)
 
 	finished = []
 	p = processes[0]
@@ -303,7 +301,7 @@ def sjf_nonpreemptive():
 	global cpu_bound
 
 	for i in range(0, len(processes)):
-		processes[i].ready_output()
+		processes[i].ready_output(0)
 		
 	processes.sort(key = operator.attrgetter('cpu_time'))
 
