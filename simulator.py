@@ -60,8 +60,9 @@ class Process:
 			return "CPU-bound"
 
 	def ready_output(self):
-		global time_elapsed
-		print "[time %dms] %s process ID %d entered ready queue (requires %dms CPU time)" % (time_elapsed, self.type_string, self.id, self.cpu_time)
+		out = "[time " + str(all_cpu[self.cpu_index].time_elapsed) + "ms] " + self.type_string + " process ID " + str(self.id) + " entered ready queue (requires " + str(self.cpu_time) + "ms CPU time)"
+		self.add_printout(all_cpu[self.cpu_index].time_elapsed, out)
+		#print "[time %dms] %s process ID %d entered ready queue (requires %dms CPU time)" % (time_elapsed, self.type_string, self.id, self.cpu_time)
 
 	def generate_burst(self, type):
 		if type == 0:
@@ -90,10 +91,10 @@ class Process:
 		total_wait_time = all_cpu[self.cpu_index].time_elapsed - self.time_entered_queue
 		turnaround = self.cpu_time + total_wait_time
 
+		all_cpu[self.cpu_index].time_elapsed += turnaround
 		out = "[time " + str(all_cpu[self.cpu_index].time_elapsed) + "ms] " + self.type_string + " process ID " + str(self.id) + " CPU burst done on CPU " + str(self.cpu_index) + " (turnaround time " + str(turnaround) + "ms, total wait time " + str(total_wait_time) + "ms)" 
 		self.add_printout(all_cpu[self.cpu_index].time_elapsed, out)
 
-		all_cpu[self.cpu_index].time_elapsed += turnaround
 		self.wait()
 
 		self.all_turnarounds.append(turnaround)
