@@ -9,7 +9,7 @@ import time
 
 
 num_processes = 4     # total number of processes per
-num_max_bursts = 1   # total number of bursts for CPU bound processes
+num_max_bursts = 2   # total number of bursts for CPU bound processes
 cs_time = 4            # time needed for context switch (in ms)
 num_cpus = 1
 initial_processes = []
@@ -92,6 +92,7 @@ class Process:
 		turnaround = self.cpu_time + total_wait_time
 
 		all_cpu[self.cpu_index].time_elapsed += turnaround
+
 		out = "[time " + str(all_cpu[self.cpu_index].time_elapsed) + "ms] " + self.type_string + " process ID " + str(self.id) + " CPU burst done on CPU " + str(self.cpu_index) + " (turnaround time " + str(turnaround) + "ms, total wait time " + str(total_wait_time) + "ms)" 
 		self.add_printout(all_cpu[self.cpu_index].time_elapsed, out)
 
@@ -297,10 +298,11 @@ def fcfs():
 
 def sjf_nonpreemptive():
 	global cpu_bound
-	processes.sort(key = operator.attrgetter('cpu_time'))
 
 	for i in range(0, len(processes)):
 		processes[i].ready_output()
+		
+	processes.sort(key = operator.attrgetter('cpu_time'))
 
 	finished = []
 	p = processes[0]
