@@ -41,7 +41,6 @@ class Process:
 		self.status = "ready"
 		self.time_entered_queue = 0
 		self.type_string = self.get_type()
-		self.creation_output()
 		self.burst_start_times = [time_elapsed]
 		self.all_turnarounds = []
 		self.all_wait_times = []
@@ -60,7 +59,7 @@ class Process:
 			cpu_bound += 1
 			return "CPU-bound"
 
-	def creation_output(self):
+	def ready_output(self):
 		global time_elapsed
 		print "[time %dms] %s process ID %d entered ready queue (requires %dms CPU time)" % (time_elapsed, self.type_string, self.id, self.cpu_time)
 
@@ -271,6 +270,9 @@ def handle_IO(p):
 ################### SCHEDULING ALGORITHMS ##################
 def fcfs():
 	global cpu_bound
+	for i in range(0, len(processes)):
+		processes[i].ready_output()
+
 	finished = []
 	p = processes[0]
 	while(True):
@@ -297,7 +299,7 @@ def sjf_nonpreemptive():
 	processes.sort(key = operator.attrgetter('cpu_time'))
 
 	for i in range(0, len(processes)):
-		processes[i].creation_output()
+		processes[i].ready_output()
 
 	finished = []
 	p = processes[0]
