@@ -7,7 +7,7 @@ import sys
 ###################### GLOBAL CONSTANTS #####################
 
 num_processes = 4     # total number of processes per
-num_max_bursts = 1     # total number of bursts for CPU bound processes
+num_max_bursts = 3     # total number of bursts for CPU bound processes
 cs_time = 4            # time needed for context switch (in ms)
 num_cpus = 2
 initial_processes = []
@@ -113,7 +113,7 @@ class Process:
 	def switch_from(self, other):
 		global time_elapsed, cs_time
 		if other != None and self != other:	
-			out = "[time " + str(all_cpu[self.cpu_index].time_elapsed) + "ms] Context switch (swapping out process ID " + str(other.id) + " for process ID " + str(self.id) +")"
+			out = "[time " + str(all_cpu[self.cpu_index].time_elapsed) + "ms] Context switch (swapping out process ID " + str(other.id) + " for process ID " + str(self.id) +") on CPU " + str(self.cpu_index)
 			all_cpu[self.cpu_index].time_elapsed += cs_time
 			self.add_printout(all_cpu[self.cpu_index].time_elapsed, out)
 
@@ -166,7 +166,7 @@ def analysis(all):
 		print "Process ID %d: %d %%" % (p.id, 0)
 
 def reset_conditions():
-	global time_elapsed, cpu_bound, total_cpu_bound, turnaround_total, wait_total, num_bursts, max_total_wait, min_total_wait, max_turnaround, min_turnaround
+	global time_elapsed, cpu_bound, total_cpu_bound, turnaround_total, wait_total, num_bursts, max_total_wait, min_total_wait, max_turnaround, min_turnaround, all_printout, all_cpu, num_cpus
 	time_elapsed = 0
 	cpu_bound = total_cpu_bound
 	turnaround_total = 0
@@ -177,6 +177,9 @@ def reset_conditions():
 	min_total_wait = sys.maxint
 	max_turnaround = 0
 	min_turnaround = sys.maxint
+
+	all_printout = []
+	all_cpu = create_CPUs(num_cpus)
 
 def create_CPUs(m):
 	all_cpu = []
@@ -249,8 +252,27 @@ def fcfs():
 	print_all()
 	analysis(finished)
 
-def sjf_nonpreemptive(all, all_cpu):
-	return
+def sjf_nonpreemptive():
+	global cpu_bound
+	finished = []
+	while(True):
+		p = processes[0]
+		if p.status == "ready":
+			done = start_process(p)
+			if done == True: #CPU Bound Process has finished it's last burst
+				# remove process from CPU
+				finish_process(p, finished)
+			else:
+				swap_process(p, len(processes)) #reinsert process at end of queue
+			p.status = "blocked"
+			p.wait()
+		if cpu_bound == 0:
+			finished.extend(processes)
+			p.done()
+			break
+
+	print_all()
+	analysis(finished)
 
 def sjf_preemptive(all):
 	return
@@ -275,6 +297,8 @@ all_cpu = create_CPUs(num_cpus)
 # working list of processes is a deep copy of the initial conditions
 processes = copy.deepcopy(initial_processes)
 fcfs()
+reset_conditions()
+
 processes = copy.deepcopy(initial_processes)
-#sjf_nonpreemptive(processes, all_cpu)
+sjf_nonpreemptive()
 reset_conditions()
