@@ -166,7 +166,7 @@ def analysis(all):
 		print "Process ID %d: %d %%" % (p.id, 0)
 
 def reset_conditions():
-	global time_elapsed, cpu_bound, total_cpu_bound, turnaround_total, wait_total, num_bursts, max_total_wait, min_total_wait, max_turnaround, min_turnaround, all_printout, all_cpu, num_cpus
+	global time_elapsed, cpu_bound, total_cpu_bound, turnaround_total, wait_total, num_bursts, max_total_wait, min_total_wait, max_turnaround, min_turnaround, all_printout, all_cpu, num_cpus, processes, initial_processes
 	time_elapsed = 0
 	cpu_bound = total_cpu_bound
 	turnaround_total = 0
@@ -180,6 +180,8 @@ def reset_conditions():
 
 	all_printout = []
 	all_cpu = create_CPUs(num_cpus)
+
+	processes = copy.deepcopy(initial_processes)
 
 def create_CPUs(m):
 	all_cpu = []
@@ -299,6 +301,5 @@ processes = copy.deepcopy(initial_processes)
 fcfs()
 reset_conditions()
 
-processes = copy.deepcopy(initial_processes)
 sjf_nonpreemptive()
 reset_conditions()
