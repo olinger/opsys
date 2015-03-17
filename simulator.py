@@ -8,7 +8,7 @@ import time
 ###################### GLOBAL CONSTANTS #####################
 
 
-num_processes = 4     # total number of processes per
+num_processes = 12     # total number of processes per
 num_max_bursts = 2   # total number of bursts for CPU bound processes
 cs_time = 4            # time needed for context switch (in ms)
 num_cpus = 1
@@ -78,6 +78,9 @@ class Process:
 	#		return wait_time
 		self.time_entered_queue = wait_time + all_cpu[self.cpu_index].time_elapsed
 		self.status = "blocked"
+		out = "[time " + str(self.time_entered_queue) + "ms] " + self.type_string + " process ID " + str(self.id) + " entered ready queue (requires " + str(self.cpu_time) + "ms CPU time)"
+		self.add_printout(all_cpu[self.cpu_index].time_elapsed, out)
+
 		return wait_time
 
 	def add_printout(self, time, out):
@@ -243,7 +246,7 @@ def print_all():
 def all_blocked(): #returns true if ALL processes are blocked on IO
 	num_blocked = 0
 	for p in processes:
-		if p.status == "blocked":
+		if p.time_entered_queue > all_cpu[p.cpu_index].time_elapsed:
 			num_blocked+=1
 	if num_blocked == num_processes:
 		return True
@@ -264,7 +267,7 @@ def handle_IO(p):
 				p.status = "ready"
 				break
 			else:
-				#print "[time %dms] Process %d is blocked on IO" % (all_cpu[p.cpu_index].time_elapsed, p.id)
+				print "[time %dms] Process %d is blocked on IO" % (all_cpu[p.cpu_index].time_elapsed, p.id)
 				swap_process(p, 1) #move process down 
 	return p
 
