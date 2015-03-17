@@ -8,8 +8,8 @@ import time
 ###################### GLOBAL CONSTANTS #####################
 
 
-num_processes = 12     # total number of processes per
-num_max_bursts = 2   # total number of bursts for CPU bound processes
+num_processes = 10    # total number of processes per
+num_max_bursts = 2    # total number of bursts for CPU bound processes
 cs_time = 4            # time needed for context switch (in ms)
 num_cpus = 1
 initial_processes = []
@@ -79,7 +79,7 @@ class Process:
 		self.time_entered_queue = wait_time + all_cpu[self.cpu_index].time_elapsed
 		self.status = "blocked"
 		out = "[time " + str(self.time_entered_queue) + "ms] " + self.type_string + " process ID " + str(self.id) + " entered ready queue (requires " + str(self.cpu_time) + "ms CPU time)"
-		self.add_printout(all_cpu[self.cpu_index].time_elapsed, out)
+		self.add_printout(self.time_entered_queue, out)
 
 		return wait_time
 
