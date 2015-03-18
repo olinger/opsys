@@ -96,7 +96,13 @@ class Process:
 	def add_printout(self, time, out):
 		global all_printout
 		p = printout(time, out)
-		all_printout.append(p)
+		add_here = len(all_printout)
+		for i in range(len(all_printout)):
+			if p.time < all_printout[i].time:
+				add_here = i
+				break
+		all_printout.insert(add_here, p)
+		#all_printout.append(p)
 
 	def burst(self):
 		global num_bursts, turnaround_total, wait_total, max_turnaround, min_turnaround, max_total_wait, min_total_wait
@@ -294,19 +300,20 @@ def RR_burst(p):
 
 	# preempt and free CPU for next in ready queue
 	all_cpu[p.cpu_index].prev_process = p
-	p.cpu_index = -1
 	return False
 
 def finish_process(p, finished):
-	global cpu_bound
+	global cpu_bound, simulation_termination_time
 	# remove process from CPU
 	if p.cpu_index >= 0:
 		all_cpu[p.cpu_index].current_processes.remove(p)
 		all_cpu[p.cpu_index].set_load()
-	p.cpu_index = -1
 	finished.append(p)
 	processes.remove(p)
 	cpu_bound -= 1
+	if cpu_bound == 0:
+		simulation_termination_time = all_cpu[p.cpu_index].time_elapsed
+	p.cpu_index = -1
 	p.done()
 
 def swap_process(p, location):
@@ -315,7 +322,7 @@ def swap_process(p, location):
 	processes.insert(location, tmp)
 
 def print_all():
-	all_printout.sort()
+	#all_printout.sort()
 	for s in all_printout:
 		print s
 
@@ -348,6 +355,14 @@ def handle_IO(p):
 				swap_process(p, 1) #move process down 
 	return p
 
+def remove_extra_prints():
+	global all_printout, simulation_termination_time
+	cutoff = len(all_printout)
+	for i in range(0, len(all_printout)):
+		if all_printout[i].time > simulation_termination_time:
+			cutoff = i
+			break
+	all_printout = all_printout[0:cutoff]
 
 ################### SCHEDULING ALGORITHMS ##################
 def fcfs():
@@ -369,6 +384,7 @@ def fcfs():
 		#	p.status = "blocked"
 		#	p.wait()
 		if cpu_bound == 0:
+			remove_extra_prints()
 			finished.extend(processes)
 			break
 
@@ -401,6 +417,7 @@ def sjf_nonpreemptive():
 				swap_process(p, location) 
 
 		if cpu_bound == 0:
+			remove_extra_prints()
 			finished.extend(processes)
 			break
 
@@ -432,6 +449,7 @@ def roundRobin():
 			else:
 				swap_process(p, len(processes)) #reinsert process at end of queue
 		if cpu_bound == 0:
+			remove_extra_prints()
 			finished.extend(processes)
 			break
 		TEST_ITER += 1
