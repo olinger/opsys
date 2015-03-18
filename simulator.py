@@ -33,8 +33,6 @@ processes = []
 all_cpu = []
 all_printout = []
 
-simulation_termination_time = sys.maxint
-
 ###################### CLASS DECLARATIONS ###################
 class Process:
 	def __init__(self, _id, _type):
@@ -190,19 +188,21 @@ def print_list(list):
 		print l
 
 def analysis(all):
-	global all_cpu, simulation_termination_time
+	global all_cpu
 	avg_turnaround = float(turnaround_total) / num_bursts
 	avg_total_wait = float(wait_total) / num_bursts
 
+	'''
 	average_cpu_utilization = 0
 	for cpu in all_cpu:
-		cpu_utilization = float(cpu.total_real_work)/simulation_termination_time * 100
+		cpu_utilization = float(cpu.total_real_work)/final_time * 100
 		average_cpu_utilization += cpu_utilization
 	average_cpu_utilzatiion = average_cpu_utilization / len(all_cpu)
+	'''
 
 	print "Turnaround time: min %dms; avg %.3fms, max %dms" %(min_turnaround, avg_turnaround, max_turnaround)
 	print "Total wait time: min %dms; avg %.3fms; max %dms" %(min_total_wait, avg_total_wait, max_total_wait)
-	print "Average CPU utilization: %.3f%%" %(average_cpu_utilization)
+	#print "Average CPU utilization: %.3f%%" %(average_cpu_utilization)
 	print "Average CPU utilization per process:"
 	for p in all:
 		print "Process ID %d: %d %%" % (p.id, 0)
@@ -325,9 +325,6 @@ def finish_process(p, finished):
 	if p in processes:
 		processes.remove(p)
 	cpu_bound -= 1
-	if cpu_bound == 0:
-		simulation_termination_time = all_cpu[p.cpu_index].time_elapsed
-		#print "simulation termination time found at %dms" %(simulation_termination_time)
 	p.cpu_index = -1
 	p.done()
 
@@ -384,18 +381,6 @@ def handle_IO(p):
 				#swap_process(p, 1) #move process down 
 	return p
 
-def remove_extra_prints():
-	global all_printout, simulation_termination_time
-	cutoff = len(all_printout)
-
-	for i in range(0, len(all_printout)):
-		#print "all_printout[i].time = %d" %(all_printout[i].time)
-		if all_printout[i].time > simulation_termination_time:
-			cutoff = i
-			#print "cutoff found at index %d" %(i)
-			break
-	all_printout = all_printout[0:cutoff]
-
 ################### SCHEDULING ALGORITHMS ##################
 def fcfs():
 	global cpu_bound
@@ -419,7 +404,6 @@ def fcfs():
 		#	p.status = "blocked"
 		#	p.wait()
 		if cpu_bound == 0:
-			remove_extra_prints()
 			finished.extend(processes)
 			break
 
@@ -443,6 +427,7 @@ def sjf_nonpreemptive():
 			if done == True: #CPU Bound Process has finished it's last burst
 				# remove process from CPU
 				finish_process(p, finished)
+				p = processes[0]
 			else:
 				#reinsert process so that list is still sorted by ascending cpu burst time
 				location = len(processes)
@@ -452,7 +437,6 @@ def sjf_nonpreemptive():
 				swap_process(p, location) 
 
 		if cpu_bound == 0:
-			remove_extra_prints()
 			finished.extend(processes)
 			break
 
@@ -484,7 +468,6 @@ def roundRobin():
 			else:
 				swap_process(p, len(processes)) #reinsert process at end of queue
 		if cpu_bound == 0:
-			remove_extra_prints()
 			finished.extend(processes)
 			break
 		TEST_ITER += 1
