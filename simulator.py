@@ -32,6 +32,8 @@ processes = []
 all_cpu = []
 all_printout = []
 
+simulation_termination_time = sys.maxint
+
 ###################### CLASS DECLARATIONS ###################
 class Process:
 	def __init__(self, _id, _type):
@@ -80,6 +82,7 @@ class Process:
 		self.IO_block = wait_time
 	#	if self.cpu_index < 0:
 	#		return wait_time
+
 		# TEST PRINT
 		out = "[time " + str(all_cpu[self.cpu_index].time_elapsed) + "ms] " + self.type_string + " process ID " + str(self.id) + " entered I/O burst (I/O burst time " + str(wait_time) + "ms)" 
 		self.add_printout(all_cpu[self.cpu_index].time_elapsed, out)
@@ -106,10 +109,15 @@ class Process:
 		out = "[time " + str(all_cpu[self.cpu_index].time_elapsed) + "ms] " + self.type_string + " process ID " + str(self.id) + " CPU burst done on CPU " + str(self.cpu_index) + " (turnaround time " + str(turnaround) + "ms, total wait time " + str(total_wait_time) + "ms)" 
 		self.add_printout(all_cpu[self.cpu_index].time_elapsed, out)
 
-		self.wait()
-
 		self.all_turnarounds.append(turnaround)
 		self.all_wait_times.append(total_wait_time)
+
+		#check if last burst for CPU-bound process
+		if self.type == 1 and len(self.all_turnarounds) >= num_max_bursts:
+			return True
+
+		self.wait()
+
 		#increment totals, store max and mins
 		num_bursts += 1
 		turnaround_total += turnaround
@@ -123,11 +131,7 @@ class Process:
 		if total_wait_time < min_total_wait:
 			min_total_wait = total_wait_time
 
-		#check if last burst for CPU-bound process
-		if self.type == 1 and len(self.all_turnarounds) >= num_max_bursts:
-			return True
-		else:
-			return False
+		return False
 
 	# handles context switching
 	def switch_from(self, other):
@@ -186,7 +190,7 @@ def analysis(all):
 		print "Process ID %d: %d %%" % (p.id, 0)
 
 def reset_conditions():
-	global time_elapsed, cpu_bound, total_cpu_bound, turnaround_total, wait_total, num_bursts, max_total_wait, min_total_wait, max_turnaround, min_turnaround, all_printout, all_cpu, num_cpus, processes, initial_processes
+	global time_elapsed, cpu_bound, total_cpu_bound, turnaround_total, wait_total, num_bursts, max_total_wait, min_total_wait, max_turnaround, min_turnaround, all_printout, all_cpu, num_cpus, processes, initial_processes, simulation_termination_time
 	time_elapsed = 0
 	cpu_bound = total_cpu_bound
 	turnaround_total = 0
@@ -202,6 +206,7 @@ def reset_conditions():
 	all_cpu = create_CPUs(num_cpus)
 
 	processes = copy.deepcopy(initial_processes)
+	simulation_termination_time = sys.maxint
 
 def create_CPUs(m):
 	all_cpu = []
@@ -217,9 +222,6 @@ def find_least_busy(cpus):
 			least_busy = c
 	return least_busy.id
 
-def burst_time_lt(self, other):
-	return self.cpu_time < other.cpu_time
-
 def start_process(p):
 	if p.cpu_index == -1: #process is not on any CPU yet
 		p.cpu_index = find_least_busy(all_cpu)
@@ -229,7 +231,6 @@ def start_process(p):
 
 def finish_process(p, finished):
 	global cpu_bound
-	all_cpu[p.cpu_index].prev_process = p
 	# remove process from CPU
 	all_cpu[p.cpu_index].current_processes.remove(p)
 	all_cpu[p.cpu_index].set_load()
@@ -237,6 +238,7 @@ def finish_process(p, finished):
 	finished.append(p)
 	processes.remove(p)
 	cpu_bound -= 1
+	p.done()
 
 def swap_process(p, location):
 	#p.burst_start_times.append(all_cpu[p.cpu_index].time_elapsed)
@@ -301,7 +303,6 @@ def fcfs():
 		#	p.wait()
 		if cpu_bound == 0:
 			finished.extend(processes)
-			p.done()
 			break
 
 	print_all()
@@ -334,7 +335,6 @@ def sjf_nonpreemptive():
 
 		if cpu_bound == 0:
 			finished.extend(processes)
-			p.done()
 			break
 
 	print_all()
@@ -343,6 +343,7 @@ def sjf_nonpreemptive():
 def sjf_preemptive(all):
 	return
 
+# NOT ACTUALLY IMPLEMENTED YET
 def roundRobin(all):
 	global cpu_bound
 	for i in range(0, len(processes)):
@@ -363,7 +364,6 @@ def roundRobin(all):
 		#	p.wait()
 		if cpu_bound == 0:
 			finished.extend(processes)
-			p.done()
 			break
 
 	print_all()
