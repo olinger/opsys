@@ -119,12 +119,6 @@ class Process:
 		self.all_turnarounds.append(turnaround)
 		self.all_wait_times.append(total_wait_time)
 
-		#check if last burst for CPU-bound process
-		if self.type == 1 and len(self.all_turnarounds) >= num_max_bursts:
-			return True
-
-		self.wait()
-
 		#increment totals, store max and mins
 		num_bursts += 1
 		turnaround_total += turnaround
@@ -138,6 +132,11 @@ class Process:
 		if total_wait_time < min_total_wait:
 			min_total_wait = total_wait_time
 
+		#check if last burst for CPU-bound process
+		if self.type == 1 and len(self.all_turnarounds) >= num_max_bursts:
+			return True
+
+		self.wait()
 		return False
 
 	# handles context switching
