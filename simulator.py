@@ -316,11 +316,6 @@ def RR_burst(p):
 
 def finish_process(p, finished):
 	global cpu_bound, simulation_termination_time
-	print "############ Removing process %d ###############" % p.id
-	print "ALL PROCESSES:"
-	print_list(processes)
-	print "FINISHED PROCESSES:"
-	print_list(finished)
 	finished.append(p)
 	# remove process from CPU
 	if p.cpu_index >= 0:
@@ -333,11 +328,6 @@ def finish_process(p, finished):
 		simulation_termination_time = all_cpu[p.cpu_index].time_elapsed
 	p.cpu_index = -1
 	p.done()
-	print "############ AFTER ###############"
-	print "ALL PROCESSES:"
-	print_list(processes)
-	print "FINISHED PROCESSES:"
-	print_list(finished)
 
 
 def swap_process(p, location):
@@ -356,7 +346,7 @@ def all_blocked(): #returns true if ALL processes are blocked on IO
 	for p in processes:
 		if p.time_entered_queue > all_cpu[p.cpu_index].time_elapsed:
 			num_blocked+=1
-	if num_blocked == num_processes:
+	if num_blocked == len(processes):
 		return True
 	return False
 
@@ -365,6 +355,7 @@ def find_next_unblocked():
 		if p.time_entered_queue <= all_cpu[p.cpu_index].time_elapsed:
 			p.status = "ready"
 			return p
+	return -1
 
 def handle_IO(p):
 	while(p.status == "blocked"):
@@ -385,6 +376,8 @@ def handle_IO(p):
 				unblocked = find_next_unblocked()
 				#insert unblocked to top of list
 				processes.insert(0, processes.pop(processes.index(unblocked)))
+				p = processes[0]
+				break
 				#print "[time %dms] Process %d is blocked on IO" % (all_cpu[p.cpu_index].time_elapsed, p.id)
 				#swap_process(p, 1) #move process down 
 	return p
@@ -413,6 +406,9 @@ def fcfs():
 			if done == True: #CPU Bound Process has finished it's last burst
 				# remove process from CPU
 				finish_process(p, finished)
+				p = processes[0]
+				#finish_process(p, finished)
+
 			else:
 				swap_process(p, len(processes)) #reinsert process at end of queue
 		#	p.status = "blocked"
@@ -515,4 +511,4 @@ sjf_nonpreemptive()
 reset_conditions()
 
 #roundRobin()
-reset_conditions()
+#reset_conditions()
