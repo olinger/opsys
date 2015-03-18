@@ -42,7 +42,7 @@ class Process:
 		self.id = _id
 		self.type = _type
 		self.type_string = self.get_type()
-		self.cpu_time = self.generate_burst(_type)
+		self.cpu_time = self.generate_burst()
 
 		# the variable stuff
 		self.remaining_cpu_burst_time = self.cpu_time
@@ -71,8 +71,8 @@ class Process:
 		self.add_printout(t, out)
 		#print "[time %dms] %s process ID %d entered ready queue (requires %dms CPU time)" % (time_elapsed, self.type_string, self.id, self.cpu_time)
 
-	def generate_burst(self, type):
-		if type == 0:
+	def generate_burst(self):
+		if self.type == 0:
 			burst_time = random.randint(20,200)
 		else:
 			burst_time = random.randint(200,3000)
@@ -137,6 +137,7 @@ class Process:
 		if self.type == 1 and len(self.all_turnarounds) >= num_max_bursts:
 			return True
 
+		self.cpu_time = self.generate_burst() # generate a new burst time for next burst
 		self.wait()
 		return False
 
@@ -285,8 +286,8 @@ def RR_burst(p):
 
 		print "Process %d finish its burst #%d! Yay! (turnaround %dms wait time %dms)(time %d)" %(p.id, len(p.all_turnarounds), turnaround, total_wait_time, all_cpu[p.cpu_index].time_elapsed)
 
-		# reset remaining CPU time for next burst
-		# LATER MIGHT HAVE TO CHANGE IT SO THAT EACH BURST IS RANDOMLY GENERATED
+		# generate new CPU burst time and reset remaining CPU time for next burst
+		self.burst_time = self.generate_burst()
 		p.remaining_cpu_burst_time = p.cpu_time
 
 		#increment totals, store max and mins
@@ -325,6 +326,7 @@ def finish_process(p, finished):
 	cpu_bound -= 1
 	if cpu_bound == 0:
 		simulation_termination_time = all_cpu[p.cpu_index].time_elapsed
+		#print "simulation termination time found at %dms" %(simulation_termination_time)
 	p.cpu_index = -1
 	p.done()
 
@@ -370,9 +372,12 @@ def handle_IO(p):
 def remove_extra_prints():
 	global all_printout, simulation_termination_time
 	cutoff = len(all_printout)
+
 	for i in range(0, len(all_printout)):
+		#print "all_printout[i].time = %d" %(all_printout[i].time)
 		if all_printout[i].time > simulation_termination_time:
 			cutoff = i
+			#print "cutoff found at index %d" %(i)
 			break
 	all_printout = all_printout[0:cutoff]
 
