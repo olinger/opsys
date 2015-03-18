@@ -8,10 +8,10 @@ import time
 ###################### GLOBAL CONSTANTS #####################
 
 
-num_processes = 10    # total number of processes per
+num_processes = 4    # total number of processes per
 num_max_bursts = 2    # total number of bursts for CPU bound processes
 cs_time = 4            # time needed for context switch (in ms)
-num_cpus = 1
+num_cpus = 2
 initial_processes = []
 total_cpu_bound = 0
 
@@ -35,12 +35,16 @@ all_printout = []
 ###################### CLASS DECLARATIONS ###################
 class Process:
 	def __init__(self, _id, _type):
+		# the constant stuff
 		self.id = _id
 		self.type = _type
+		self.type_string = self.get_type()
 		self.cpu_time = self.generate_burst(_type)
+
+		# the variable stuff
+		self.remaining_cpu_burst_time = self.cpu_time
 		self.status = "ready"
 		self.time_entered_queue = 0
-		self.type_string = self.get_type()
 		self.burst_start_times = [time_elapsed]
 		self.all_turnarounds = []
 		self.all_wait_times = []
@@ -92,7 +96,8 @@ class Process:
 		total_wait_time = all_cpu[self.cpu_index].time_elapsed - self.time_entered_queue
 		turnaround = self.cpu_time + total_wait_time
 
-		all_cpu[self.cpu_index].time_elapsed += turnaround
+		#all_cpu[self.cpu_index].time_elapsed += turnaround ###flaggy
+		all_cpu[self.cpu_index].time_elapsed += self.cpu_time
 
 		out = "[time " + str(all_cpu[self.cpu_index].time_elapsed) + "ms] " + self.type_string + " process ID " + str(self.id) + " CPU burst done on CPU " + str(self.cpu_index) + " (turnaround time " + str(turnaround) + "ms, total wait time " + str(total_wait_time) + "ms)" 
 		self.add_printout(all_cpu[self.cpu_index].time_elapsed, out)
@@ -334,7 +339,30 @@ def sjf_preemptive(all):
 	return
 
 def roundRobin(all):
-	return
+	global cpu_bound
+	for i in range(0, len(processes)):
+		processes[i].ready_output(0)
+
+	finished = []
+	p = processes[0]
+	while(True):
+		p = handle_IO(p) #pass start of queue here, will move things around in queue based on IO wait time if necessary
+		if p.status == "ready":
+			done = start_process(p)
+			if done == True: #CPU Bound Process has finished it's last burst
+				# remove process from CPU
+				finish_process(p, finished)
+			else:
+				swap_process(p, len(processes)) #reinsert process at end of queue
+		#	p.status = "blocked"
+		#	p.wait()
+		if cpu_bound == 0:
+			finished.extend(processes)
+			p.done()
+			break
+
+	print_all()
+	analysis(finished)
 
 ####################### MAIN ################################
 
