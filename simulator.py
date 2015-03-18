@@ -23,6 +23,7 @@ cpu_bound = 0         # number of CPU bound processes left
 turnaround_total = 0
 wait_total = 0
 num_bursts = 0
+final_time = 0
 
 max_total_wait = 0
 min_total_wait = sys.maxint
@@ -148,12 +149,14 @@ class Process:
 			self.add_printout(all_cpu[self.cpu_index].time_elapsed, out)
 
 	def done(self):
+		global final_time
 		avg_turnaround = sum(self.all_turnarounds) / float(len(self.all_turnarounds))
 		avg_wait_times = sum(self.all_wait_times) / float(len(self.all_wait_times))
 		
 		#print "[time %dms] %s process ID %d terminated (avg turnaround time %dms, avg total wait time %dms)" % (time_elapsed, self.type_string, self.id, avg_turnaround, avg_wait_times)
 		out = "[time " + str(all_cpu[self.cpu_index].time_elapsed) + "ms] " + self.type_string + " process ID " + str(self.id) + " terminated (avg turnaround time " + str(avg_turnaround) + "ms, avg total wait time " + str(avg_wait_times) + "ms)"
 		self.add_printout(all_cpu[self.cpu_index].time_elapsed, out)
+		final_time = all_cpu[self.cpu_index].time_elapsed
 
 class CPU:
 	def __init__(self, _id):
@@ -337,8 +340,10 @@ def swap_process(p, location):
 
 def print_all():
 	#all_printout.sort()
+	#del all_printout[-1] #last printout is duplicate
 	for s in all_printout:
-		print s
+		if s.time <= final_time:
+			print s
 
 def all_blocked(): #returns true if ALL processes are blocked on IO
 	num_blocked = 0
