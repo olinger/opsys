@@ -112,6 +112,7 @@ class Process:
 
 		#all_cpu[self.cpu_index].time_elapsed += turnaround ###flaggy
 		all_cpu[self.cpu_index].time_elapsed += self.cpu_time
+		all_cpu[self.cpu_index].total_real_work += self.cpu_time
 
 		out = "[time " + str(all_cpu[self.cpu_index].time_elapsed) + "ms] " + self.type_string + " process ID " + str(self.id) + " CPU burst done on CPU " + str(self.cpu_index) + " (turnaround time " + str(turnaround) + "ms, total wait time " + str(total_wait_time) + "ms)" 
 		self.add_printout(all_cpu[self.cpu_index].time_elapsed, out)
@@ -162,6 +163,7 @@ class CPU:
 		self.load = 0
 		self.time_elapsed = 0
 		self.prev_process = None # most recent process run by this CPU (used for context switching)
+		self.total_real_work = 0
 
 	def set_load(self): ### flaggy?
 		for p in self.current_processes:
@@ -187,10 +189,19 @@ def print_list(list):
 		print l
 
 def analysis(all):
-	avg_turnaround = turnaround_total / num_bursts
-	avg_total_wait = wait_total / num_bursts
-	print "Turnaround time: min %dms; avg %dms, max %dms" %(min_turnaround, avg_turnaround, max_turnaround)
-	print "Total wait time: min %dms; avg %dms; max %dms" %(min_total_wait, avg_total_wait, max_total_wait)
+	global all_cpu, simulation_termination_time
+	avg_turnaround = float(turnaround_total) / num_bursts
+	avg_total_wait = float(wait_total) / num_bursts
+
+	average_cpu_utilization = 0
+	for cpu in all_cpu:
+		cpu_utilization = float(cpu.total_real_work)/simulation_termination_time * 100
+		average_cpu_utilization += cpu_utilization
+	average_cpu_utilzatiion = average_cpu_utilization / len(all_cpu)
+
+	print "Turnaround time: min %dms; avg %.3fms, max %dms" %(min_turnaround, avg_turnaround, max_turnaround)
+	print "Total wait time: min %dms; avg %.3fms; max %dms" %(min_total_wait, avg_total_wait, max_total_wait)
+	print "Average CPU utilization: %.3f%%" %(average_cpu_utilization)
 	print "Average CPU utilization per process:"
 	for p in all:
 		print "Process ID %d: %d %%" % (p.id, 0)
@@ -255,6 +266,8 @@ def RR_burst(p):
 
 	all_cpu[p.cpu_index].load += time_skip
 	all_cpu[p.cpu_index].time_elapsed += time_skip
+	all_cpu[p.cpu_index].total_real_work += time_skip
+
 	p.remaining_cpu_burst_time -= time_skip
 
 	print "Process %d finished time slice! (spent %dms, %dms remaining)(time %d)" %(p.id, time_skip, p.remaining_cpu_burst_time, all_cpu[p.cpu_index].time_elapsed)
