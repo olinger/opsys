@@ -153,7 +153,7 @@ class CPU:
 		self.time_elapsed = 0
 		self.prev_process = None # most recent process run by this CPU (used for context switching)
 
-	def set_load(self):
+	def set_load(self): ### flaggy?
 		for p in self.current_processes:
 			self.load += p.cpu_time
 
@@ -263,9 +263,10 @@ def handle_IO(p):
 	while(p.status == "blocked"):
 		p = processes[0]
 		if all_blocked(): #all processes are blocked on IO, wait for first process to finish
-			time_left = p.time_entered_queue - all_cpu[p.cpu_index].time_elapsed
-			all_cpu[p.cpu_index].time_elapsed += time_left
-			p.time_entered_queue = all_cpu[p.cpu_index].time_elapsed
+			#time_left = p.time_entered_queue - all_cpu[p.cpu_index].time_elapsed
+			#all_cpu[p.cpu_index].time_elapsed += time_left
+			all_cpu[p.cpu_index].time_elapsed = p.time_entered_queue
+			#p.time_entered_queue = all_cpu[p.cpu_index].time_elapsed
 			p.status = "ready"
 			break
 		else: 
