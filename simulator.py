@@ -45,7 +45,7 @@ class Process:
 		self.remaining_cpu_burst_time = self.cpu_time
 		self.status = "ready"
 		self.time_entered_queue = 0
-		self.burst_start_times = [time_elapsed]
+		#self.burst_start_times = [time_elapsed]
 		self.all_turnarounds = []
 		self.all_wait_times = []
 		self.cpu_util = []
@@ -80,6 +80,10 @@ class Process:
 		self.IO_block = wait_time
 	#	if self.cpu_index < 0:
 	#		return wait_time
+		# TEST PRINT
+		out = "[time " + str(all_cpu[self.cpu_index].time_elapsed) + "ms] " + self.type_string + " process ID " + str(self.id) + " entered I/O burst (I/O burst time " + str(wait_time) + "ms)" 
+		self.add_printout(all_cpu[self.cpu_index].time_elapsed, out)
+
 		self.time_entered_queue = wait_time + all_cpu[self.cpu_index].time_elapsed
 		self.status = "blocked"
 		self.ready_output(self.time_entered_queue);
@@ -120,7 +124,7 @@ class Process:
 			min_total_wait = total_wait_time
 
 		#check if last burst for CPU-bound process
-		if self.type == 1 and len(self.burst_start_times) >= num_max_bursts:
+		if self.type == 1 and len(self.all_turnarounds) >= num_max_bursts:
 			return True
 		else:
 			return False
@@ -235,7 +239,7 @@ def finish_process(p, finished):
 	cpu_bound -= 1
 
 def swap_process(p, location):
-	p.burst_start_times.append(all_cpu[p.cpu_index].time_elapsed)
+	#p.burst_start_times.append(all_cpu[p.cpu_index].time_elapsed)
 	all_cpu[p.cpu_index].prev_process = p
 	tmp = p
 	processes.remove(p)
