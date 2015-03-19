@@ -191,21 +191,19 @@ def print_list(list):
 		print l
 
 def analysis(all):
-	global all_cpu
+	global all_cpu, final_time
 	avg_turnaround = float(turnaround_total) / num_bursts
 	avg_total_wait = float(wait_total) / num_bursts
 
-	'''
 	average_cpu_utilization = 0
 	for cpu in all_cpu:
 		cpu_utilization = float(cpu.total_real_work)/final_time * 100
 		average_cpu_utilization += cpu_utilization
-	average_cpu_utilzatiion = average_cpu_utilization / len(all_cpu)
-	'''
+	average_cpu_utilization = average_cpu_utilization / len(all_cpu)
 
 	print "Turnaround time: min %dms; avg %.3fms, max %dms" %(min_turnaround, avg_turnaround, max_turnaround)
 	print "Total wait time: min %dms; avg %.3fms; max %dms" %(min_total_wait, avg_total_wait, max_total_wait)
-	#print "Average CPU utilization: %.3f%%" %(average_cpu_utilization)
+	print "Average CPU utilization: %.3f%%" %(average_cpu_utilization)
 	print "Average CPU utilization per process:"
 	for p in all:
 		print "Process ID %d: %d %%" % (p.id, 0)
@@ -290,7 +288,7 @@ def RR_burst(p):
 		print "Process %d finish its burst #%d! Yay! (turnaround %dms wait time %dms)(time %d)" %(p.id, len(p.all_turnarounds), turnaround, total_wait_time, all_cpu[p.cpu_index].time_elapsed)
 
 		# generate new CPU burst time and reset remaining CPU time for next burst
-		self.burst_time = self.generate_burst()
+		p.burst_time = p.generate_burst()
 		p.remaining_cpu_burst_time = p.cpu_time
 
 		#increment totals, store max and mins
@@ -323,8 +321,9 @@ def finish_process(p, finished):
 	finished.append(p)
 	# remove process from CPU
 	if p.cpu_index >= 0:
-		all_cpu[p.cpu_index].current_processes.remove(p)
-		all_cpu[p.cpu_index].set_load()
+		if p in all_cpu[p.cpu_index].current_processes:
+			all_cpu[p.cpu_index].current_processes.remove(p)
+			all_cpu[p.cpu_index].set_load()
 	if p in processes:
 		processes.remove(p)
 	cpu_bound -= 1
@@ -468,16 +467,18 @@ def roundRobin():
 		if p.status == "ready":
 			done = RR_burst(p)
 			if done == True: #CPU Bound Process has finished it's last burst
-				cpu_bound -= 1
-				p.done()
+				finish_process(p, finished)
+				p = processes[0]
 			else:
 				swap_process(p, len(processes)) #reinsert process at end of queue
 		if cpu_bound == 0:
 			finished.extend(processes)
 			break
 		TEST_ITER += 1
+		'''
 		if TEST_ITER == 10:
 			break
+		'''
 	print_all()
 	analysis(finished)
 
@@ -504,4 +505,4 @@ sjf_nonpreemptive()
 reset_conditions()
 
 #roundRobin()
-#reset_conditions()
+reset_conditions()
