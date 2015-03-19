@@ -1,3 +1,5 @@
+# Authors: Jazmine Olinger and Ariel Lee
+
 ########################### IMPORTS #########################
 import copy
 import operator
@@ -8,10 +10,10 @@ import time
 ###################### GLOBAL CONSTANTS #####################
 
 
-num_processes = 7   # total number of processes per
-num_max_bursts = 3    # total number of bursts for CPU bound processes
+num_processes = 12   # total number of processes per
+num_max_bursts = 6    # total number of bursts for CPU bound processes
 cs_time = 4            # time needed for context switch (in ms)
-num_cpus = 2
+num_cpus = 4
 initial_processes = []
 total_cpu_bound = 0
 RR_timeslice = 80		# round robin timeslice
@@ -50,7 +52,6 @@ class Process:
 		self.burst_start_times = []
 		self.all_turnarounds = []
 		self.all_wait_times = []
-		self.cpu_util = []
 		self.cpu_index = -1
 		self.IO_block = 0
 
@@ -158,6 +159,11 @@ class Process:
 		self.add_printout(all_cpu[self.cpu_index].time_elapsed, out)
 		final_time = all_cpu[self.cpu_index].time_elapsed
 
+	def get_cpu_util(self):
+		total_real_work = sum(self.all_turnarounds) - sum(self.all_wait_times)
+		overall_time = sum(self.all_turnarounds)
+		return float(total_real_work) / overall_time
+
 class CPU:
 	def __init__(self, _id):
 		self.id = _id
@@ -203,10 +209,11 @@ def analysis(all):
 
 	print "Turnaround time: min %dms; avg %.3fms, max %dms" %(min_turnaround, avg_turnaround, max_turnaround)
 	print "Total wait time: min %dms; avg %.3fms; max %dms" %(min_total_wait, avg_total_wait, max_total_wait)
-	print "Average CPU utilization: %.3f%%" %(average_cpu_utilization)
+	print "Average CPU utilization: %.3f %%" %(average_cpu_utilization)
 	print "Average CPU utilization per process:"
 	for p in all:
-		print "Process ID %d: %d %%" % (p.id, 0)
+		cpu_utilization = p.get_cpu_util() * 100
+		print "Process ID %d: %.3f %%" % (p.id, cpu_utilization)
 
 def reset_conditions():
 	global time_elapsed, cpu_bound, total_cpu_bound, turnaround_total, wait_total, num_bursts, max_total_wait, min_total_wait, max_turnaround, min_turnaround, all_printout, all_cpu, num_cpus, processes, initial_processes, simulation_termination_time
