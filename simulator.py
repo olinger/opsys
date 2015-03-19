@@ -8,10 +8,10 @@ import time
 ###################### GLOBAL CONSTANTS #####################
 
 
-num_processes = 12    # total number of processes per
-num_max_bursts = 6    # total number of bursts for CPU bound processes
+num_processes = 7   # total number of processes per
+num_max_bursts = 3    # total number of bursts for CPU bound processes
 cs_time = 4            # time needed for context switch (in ms)
-num_cpus = 4
+num_cpus = 2
 initial_processes = []
 total_cpu_bound = 0
 RR_timeslice = 80		# round robin timeslice
@@ -84,8 +84,8 @@ class Process:
 	#		return wait_time
 
 		# TEST PRINT
-		out = "[time " + str(all_cpu[self.cpu_index].time_elapsed) + "ms] " + self.type_string + " process ID " + str(self.id) + " entered I/O burst (I/O burst time " + str(wait_time) + "ms)" 
-		self.add_printout(all_cpu[self.cpu_index].time_elapsed, out)
+		#out = "[time " + str(all_cpu[self.cpu_index].time_elapsed) + "ms] " + self.type_string + " process ID " + str(self.id) + " entered I/O burst (I/O burst time " + str(wait_time) + "ms)" 
+		#self.add_printout(all_cpu[self.cpu_index].time_elapsed, out)
 
 		self.time_entered_queue = wait_time + all_cpu[self.cpu_index].time_elapsed
 		self.status = "blocked"
@@ -249,16 +249,30 @@ def start_process(p):
 	return p.burst()
 
 def RR_burst(p):
-	global RR_timeslice, all_cpu, num_bursts, turnaround_total, wait_total, max_turnaround, min_turnaround, max_total_wait, min_total_wait, num_max_bursts
-	p.cpu_index = find_least_busy(all_cpu)
+	global RR_timeslice, all_cpu, num_bursts, turnaround_total, wait_total, max_turnaround, min_turnaround, max_total_wait, min_total_wait, num_max_bursts, cs_time
+	if p.cpu_index == -1:	
+		p.cpu_index = find_least_busy(all_cpu)
+		all_cpu[p.cpu_index].current_processes.append(p)
+		all_cpu[p.cpu_index].set_load()
+		#print "Process %d assigned to cpu %d" %(p.id, p.cpu_index)
 	
-	print "Process %d assigned to cpu %d" %(p.id, p.cpu_index)
+	previous_process = all_cpu[p.cpu_index].prev_process
 	# if this process is just starting its burst, keep track of its burst start time
 	if p.remaining_cpu_burst_time == p.cpu_time:
-		p.burst_start_times.append(all_cpu[p.cpu_index].time_elapsed)
-		print "Process %d starts burst! (time %d)" %(p.id, all_cpu[p.cpu_index].time_elapsed)
+		# if previous process was preempted, print the context switch OUT only
+		if previous_process != None and previous_process.remaining_cpu_burst_time < previous_process.cpu_time:
+			out = "[time " + str(all_cpu[p.cpu_index].time_elapsed) + "ms] Context switch (swapping out process ID " + str(previous_process.id) + ") on CPU " + str(p.cpu_index)
+			p.add_printout(all_cpu[p.cpu_index].time_elapsed, out)
+			all_cpu[p.cpu_index].time_elapsed += cs_time/2
 	else: 
-		print "Process %d continues burst! (%dms remaining)(time %d)" %(p.id, p.remaining_cpu_burst_time, all_cpu[p.cpu_index].time_elapsed)
+		# only if the previous process was preempted, print the context switch in and out
+		if previous_process.remaining_cpu_burst_time < previous_process.cpu_time:	
+			p.switch_from(all_cpu[p.cpu_index].prev_process)
+		else:
+			# only print the context switch IN for this process
+			out = "[time " + str(all_cpu[p.cpu_index].time_elapsed) + "ms] Context switch (swapping in process ID " + str(p.id) + ") on CPU "+ str(p.cpu_index)
+			p.add_printout(all_cpu[p.cpu_index].time_elapsed, out)
+			all_cpu[p.cpu_index].time_elapsed += cs_time/2
 
 	time_skip = 0
 	if p.remaining_cpu_burst_time < RR_timeslice:
@@ -272,7 +286,7 @@ def RR_burst(p):
 
 	p.remaining_cpu_burst_time -= time_skip
 
-	print "Process %d finished time slice! (spent %dms, %dms remaining)(time %d)" %(p.id, time_skip, p.remaining_cpu_burst_time, all_cpu[p.cpu_index].time_elapsed)
+	#print "Process %d finished time slice! (spent %dms, %dms remaining)(time %d)" %(p.id, time_skip, p.remaining_cpu_burst_time, all_cpu[p.cpu_index].time_elapsed)
 
 	# check if the burst is done
 	if p.remaining_cpu_burst_time == 0:
@@ -285,11 +299,13 @@ def RR_burst(p):
 		out = "[time " + str(all_cpu[p.cpu_index].time_elapsed) + "ms] " + p.type_string + " process ID " + str(p.id) + " CPU burst done on CPU " + str(p.cpu_index) + " (turnaround time " + str(turnaround) + "ms, total wait time " + str(total_wait_time) + "ms)" 
 		p.add_printout(all_cpu[p.cpu_index].time_elapsed, out)
 
-		print "Process %d finish its burst #%d! Yay! (turnaround %dms wait time %dms)(time %d)" %(p.id, len(p.all_turnarounds), turnaround, total_wait_time, all_cpu[p.cpu_index].time_elapsed)
+		#print "Process %d finish its burst #%d! Yay! (turnaround %dms wait time %dms)(time %d)" %(p.id, len(p.all_turnarounds), turnaround, total_wait_time, all_cpu[p.cpu_index].time_elapsed)
 
 		# generate new CPU burst time and reset remaining CPU time for next burst
-		p.burst_time = p.generate_burst()
+		p.cpu_time = p.generate_burst()
 		p.remaining_cpu_burst_time = p.cpu_time
+
+		all_cpu[p.cpu_index].prev_process = p
 
 		#increment totals, store max and mins
 		num_bursts += 1
@@ -309,7 +325,6 @@ def RR_burst(p):
 			return True
 
 		p.wait()
-		p.cpu_index = -1
 		return False
 
 	# preempt and free CPU for next in ready queue
@@ -462,8 +477,9 @@ def roundRobin():
 	TEST_ITER = 0
 	while(True):
 		p = processes[0]
-		print "Process #%d next - status: %s" %(p.id, p.status)
+		#print "Process #%d next - status: %s" %(p.id, p.status)
 		p = handle_IO(p) #pass start of queue here, will move things around in queue based on IO wait time if necessary
+		#print "Process #%d next - status: %s" %(p.id, p.status)
 		if p.status == "ready":
 			done = RR_burst(p)
 			if done == True: #CPU Bound Process has finished it's last burst
@@ -474,11 +490,11 @@ def roundRobin():
 		if cpu_bound == 0:
 			finished.extend(processes)
 			break
+			'''
 		TEST_ITER += 1
-		'''
 		if TEST_ITER == 10:
 			break
-		'''
+			'''
 	print_all()
 	analysis(finished)
 
@@ -504,5 +520,5 @@ reset_conditions()
 sjf_nonpreemptive()
 reset_conditions()
 
-#roundRobin()
+roundRobin()
 reset_conditions()
